@@ -3,7 +3,7 @@
 ## Team Members:
 | Name |
 |---|
+| Alekya Kowta (Team Leader) |
 | Eyouel Kibret |
 | Mansur Mukimbekov |
-| Alekya Kowta |
 | Michael Womack |
