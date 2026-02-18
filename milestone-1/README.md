@@ -25,19 +25,19 @@ The project will also address **state management and consistency**. A debate is 
 
 We will draw on at least the following lines of work to guide our design and evaluation:
 
-1. Tillmann, A. (2025). Literature review of multi-agent debate for problem-solving. arXiv preprint arXiv:2506.00066.
+1. Tillmann, A. (2025). Literature review of multi-agent debate for problem-solving. arXiv preprint arXiv:2506.00066.  
     This work surveys existing multi-agent debate approaches, helping us position our system within the broader landscape of debate-based reasoning and understand common design choices and evaluation setups.
 
-2. Hu, T., Tan, Z., Wang, S., Qu, H., & Chen, T. (2025). Multi-Agent Debate for LLM Judges with Adaptive Stability Detection. arXiv preprint arXiv:2510.12697.
+2. Hu, T., Tan, Z., Wang, S., Qu, H., & Chen, T. (2025). Multi-Agent Debate for LLM Judges with Adaptive Stability Detection. arXiv preprint arXiv:2510.12697.  
     This paper introduces a formal framework for multi-agent debate among LLM judges and proposes an adaptive stability criterion for deciding when to stop the debate, which informs our debate state machine and stopping rules.
 
-3. Li, Y., Du, Y., Zhang, J., Hou, L., Grabowski, P., Li, Y., & Ie, E. (2024, November). Improving multi-agent debate with sparse communication topology. In Findings of the Association for Computational Linguistics: EMNLP 2024 (pp. 7281-7294).
+3. Li, Y., Du, Y., Zhang, J., Hou, L., Grabowski, P., Li, Y., & Ie, E. (2024, November). Improving multi-agent debate with sparse communication topology. In Findings of the Association for Computational Linguistics: EMNLP 2024 (pp. 7281-7294).  
     This work studies how different communication topologies between agents affect performance and cost, guiding how we structure interactions among our agent services to balance quality and scalability.
 
-4. Su, J., Xia, Y., Duan, Y., Du, J., Huang, J., Shi, T., & He, L. (2025). Debflow: Automating agent creation via agent debate. arXiv preprint arXiv:2503.23781.
+4. Su, J., Xia, Y., Duan, Y., Du, J., Huang, J., Shi, T., & He, L. (2025). Debflow: Automating agent creation via agent debate. arXiv preprint arXiv:2503.23781.  
     DebFlow presents a system that uses agent debate to automatically construct new agents, providing inspiration for how we might automate or configure roles within our debate platform and manage orchestration logic.
 
-5. Fourney, A., Bansal, G., Mozannar, H., Tan, C., Salinas, E., Niedtner, F., ... & Amershi, S. (2024). Magentic-one: A generalist multi-agent system for solving complex tasks. arXiv preprint arXiv:2411.04468.
+5. Fourney, A., Bansal, G., Mozannar, H., Tan, C., Salinas, E., Niedtner, F., ... & Amershi, S. (2024).   Magentic-one: A generalist multi-agent system for solving complex tasks. arXiv preprint arXiv:2411.04468.
     Magentic-One describes a large-scale multi-agent system with centralized orchestration and tool use, which influences our design of the debate orchestrator, task routing, and reliability mechanisms in a distributed setting.
 
 6. “Building an AI Debate Panel: Agents that Argue and Give a Final Conclusion” (Towards AI, 2025).  
