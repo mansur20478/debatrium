@@ -37,7 +37,7 @@ We will draw on at least the following lines of work to guide our design and eva
 4. Su, J., Xia, Y., Duan, Y., Du, J., Huang, J., Shi, T., & He, L. (2025). Debflow: Automating agent creation via agent debate. arXiv preprint arXiv:2503.23781.  
     DebFlow presents a system that uses agent debate to automatically construct new agents, providing inspiration for how we might automate or configure roles within our debate platform and manage orchestration logic.
 
-5. Fourney, A., Bansal, G., Mozannar, H., Tan, C., Salinas, E., Niedtner, F., ... & Amershi, S. (2024).   Magentic-one: A generalist multi-agent system for solving complex tasks. arXiv preprint arXiv:2411.04468.
+5. Fourney, A., Bansal, G., Mozannar, H., Tan, C., Salinas, E., Niedtner, F., ... & Amershi, S. (2024).   Magentic-one: A generalist multi-agent system for solving complex tasks. arXiv preprint arXiv:2411.04468.  
     Magentic-One describes a large-scale multi-agent system with centralized orchestration and tool use, which influences our design of the debate orchestrator, task routing, and reliability mechanisms in a distributed setting.
 
 6. “Building an AI Debate Panel: Agents that Argue and Give a Final Conclusion” (Towards AI, 2025).  
