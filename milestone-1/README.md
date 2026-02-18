@@ -1,89 +1,29 @@
-# Milestone 1: Distributed Systems Project Proposals
+# Milestone-1
+# Distributed Multi-Agent AI Debate Platform
 
----
+## Topic Area and Motivation
+The topic of this project is a distributed multi-agent AI debate platform inspired by recent work on AI debate panels, where multiple specialized language-model agents argue about a question and a moderator synthesizes a final conclusion. Prior work and tutorials show how to build such systems as single-process prototypes using tools such as LangChain or LangGraph, but they do not address how to scale debate workloads to many concurrent users or how to provide strong reliability guarantees. Our goal is to take this “AI debate panel” idea and turn it into a full distributed system that can orchestrate many debates across a cluster of services.
 
-## Option 1: Distributed RAG Pipeline for Real-Time Fraud Detection
+This problem is important because multi-agent debate has emerged as a promising pattern for improving the quality, robustness, and transparency of LLM-based systems, especially in decision-support settings where a single model’s answer may be unreliable. In realistic applications (for example, internal decision tools, technical support triage, or risk analysis), many users may submit queries simultaneously, and the system must coordinate multiple agents, tools, and debate rounds under tight latency and availability constraints. In this project, we will design and build a horizontally scalable, fault-tolerant debate platform whose architecture separates the user-facing API, the debate orchestrator, and the role-specific agent workers, and that can manage hundreds of concurrent debates with measurable performance and resilience characteristics.
 
-### 1. What is the topic area of the project? Why is it important and what specifically will you build or design?
+Concretely, we plan to implement: (1) a gateway service exposing an HTTP API for starting and inspecting debates; (2) a debate orchestrator service that maintains debate state, schedules debate rounds, and enqueues “agent turns”; (3) multiple role-specific worker services (for example, Researcher, Critic, and Judge agents) that consume tasks from a message queue, call LLM backends and tools such as web search or retrieval, and report results back to the orchestrator; and (4) a persistent store for debate metadata and transcripts. The user will receive both the final answer and a concise trace of key arguments from the different agents.
 
-The topic area of this project is **Distributed Information Retrieval and Real-Time Data Processing** applied to Financial Technology (FinTech). This area is critically important because traditional rule-based fraud detection systems are becoming obsolete against sophisticated, evolving fraud patterns. While modern Machine Learning (ML) models offer better detection, they often lack the immediate context of historical data. A Retrieval-Augmented Generation (RAG) pipeline bridges this gap by fetching relevant historical context in real-time to inform the decision-making process.
+## Main Distributed Systems Challenges
 
-We will specifically design and build a **Distributed Vector Database and Query Engine**. The system will ingest financial transaction logs, convert them into vector embeddings, and store them across a sharded cluster of nodes. When a new transaction occurs, the system will perform a distributed similarity search to retrieve the top-$k$ most similar past fraud cases. We will build the underlying infrastructure from scratch, including the sharded storage layer, the replication mechanism for high availability, and the scatter-gather query aggregator.
+A central challenge is **scalability and load balancing**. Each user request may spawn several debate rounds and multiple agent turns, so the system must distribute these tasks across many worker instances while avoiding bottlenecks in the orchestrator or any single model backend. We will use a task queue to decouple the orchestrator from workers and implement strategies such as round-robin or least-loaded routing to scale horizontally as we add more worker processes. We will then experimentally evaluate how throughput and end-to-end latency change as we scale the number of workers.
 
-### 2. What are the main distributed systems challenges you will face?
+Another major challenge is **fault tolerance and graceful degradation**. Agents may time out, model calls may fail, or worker containers may crash during an ongoing debate. Our design will ensure that debate state is stored in a durable database and that each “agent turn” is represented as an idempotent task in the queue, so that the system can detect failures and safely retry tasks on other workers without corrupting the debate transcript. We also plan to support simple degradation strategies, such as skipping a missing agent’s turn or shortening the debate if resource limits are reached, so that the platform remains available even under partial failures.
 
-| Challenge | Description & Implementation Strategy |
-| :--- | :--- |
-| **Scalability & Sharding** | As the dataset grows to terabytes of transaction history, a single node cannot store the entire index. We must implement **Consistent Hashing** to partition vectors across nodes evenly and minimize data movement when nodes are added or removed. |
-| **Latency** | Financial transactions have strict SLAs (often <100ms). We face the challenge of broadcasting queries to all shards and aggregating results (Scatter-Gather pattern) without network overhead becoming a bottleneck. |
-| **Fault Tolerance** | If a shard node crashes, the system cannot stop processing transactions. We must implement **Replication** (e.g., Primary-Backup) so that if a primary shard fails, a replica can immediately service the query. |
-| **Consistency** | We must manage the trade-off between writing new fraud cases to the database and reading them instantly. We will likely implement an **Eventual Consistency** model to prioritize availability. |
+The project will also address **state management and consistency**. A debate is effectively a distributed state machine spanning multiple services: the orchestrator must coordinate the current round, agent messages, and the final decision while workers are stateless and may process tasks out of order. We will design a clear debate schema and use optimistic or pessimistic concurrency controls (for example, version numbers on debate records) to avoid double-applying turns or losing updates. Finally, we will explore **multi-tenancy and scheduling** issues by supporting multiple users and configurable debate “budgets” (maximum number of rounds or tokens), so that no single user can starve the cluster.
 
-### 3. What are some sample papers that will guide your work?
-Would be finalized after approval.
+## Sample Papers and Systems
 
----
+We will draw on at least the following lines of work to guide our design and evaluation:
 
-## Option 2: Privacy-Preserving Federated Learning Infrastructure
+1. Papers and articles on multi-agent debate frameworks and architectures (e.g., multi-agent debate patterns and empirical analyses).
+2. Tutorials and system writeups on building AI debate panels and multi-agent systems with LLMs, including the original “AI debate panel” article that motivates this project.
+3. Research on orchestration and reliability for multi-agent or distributed AI systems, including discussions of trust, robustness, and failure modes in distributed multi-agent setups.
+4. Evaluation frameworks for multi-step AI reasoning and agent collaboration, which will inform our metrics and experimental setup for measuring quality and performance.
+(https://arxiv.org/html/2503.23781v1
 
-### 1. What is the topic area of the project? Why is it important and what specifically will you build or design?
-
-The topic area is **Distributed Machine Learning and Privacy-Preserving Computing**. This is increasingly important in sectors like banking and healthcare, where institutions possess valuable data but are legally restricted (e.g., by GDPR or HIPAA) from sharing it centrally. Federated Learning allows these institutions to collaborate on training a global model without ever exposing their raw private data.
-
-We will build a **Federated Learning (FL) System** consisting of a central Parameter Server and multiple Client Workers. The system will follow a star topology: the server maintains the global model, while client nodes (simulating different banks) download the model, train it on their local private data, and return only the model updates (gradients). We will implement the communication protocols for model distribution, the synchronization logic for training rounds, and the aggregation algorithms (such as Federated Averaging) required to merge client updates into a coherent global model.
-
-### 2. What are the main distributed systems challenges you will face?
-
-| Challenge | Description & Implementation Strategy |
-| :--- | :--- |
-| **Heterogeneity (Stragglers)** | Client nodes will have different computational speeds and network bandwidths. Waiting for the slowest node (synchronous updates) will stall the system. We must implement a strategy to handle or drop **stragglers** effectively. |
-| **Communication Overhead** | Transmitting large neural network weights frequently saturates bandwidth. We will need to implement efficient **Serialization** and potentially gradient compression techniques to reduce the network footprint. |
-| **Partial Failure** | In a distributed network, clients may drop out mid-training. Our aggregation protocol must be robust enough to handle **node failures** and continue the training round with partial results. |
-| **Synchronization** | Managing the global state (the model) while receiving concurrent updates from multiple clients requires careful **concurrency control** to prevent race conditions or model corruption. |
-
-### 3. What are some sample papers that will guide your work?
-Would be finalized after approval.
-
----
-
-## Option 3: Distributed Semantic Retrieval for Explainable Fraud Analysis
-
-### 1. What is the topic area of the project? Why is it important and what specifically will you build or design?
-
-The topic area is **Explainable AI (XAI) within Distributed Storage Systems**. While detecting fraud is critical, regulatory compliance requires explaining *why* a decision was made. "Black box" AI models often fail to provide this transparency. This project is important because it provides a scalable infrastructure for generating evidence-based explanations for high-volume financial decisions.
-
-We will design and build a **Distributed Document Store and Retrieval System**. The system will store millions of historical "Case Files" (narratives of past fraud), vectorized for semantic search. When a transaction is flagged, the system will query the distributed cluster to retrieve semantically similar past cases to generate a human-readable explanation. Our focus will be on the distributed storage engine: implementing data partitioning, ensuring replication for durability, and managing the consistency of the document store across the cluster.
-
-### 2. What are the main distributed systems challenges you will face?
-
-| Challenge | Description & Implementation Strategy |
-| :--- | :--- |
-| **Data Partitioning** | Semantic search requires querying based on vector similarity, not just primary keys. This makes effective partitioning difficult. We must ensure that **load balancing** is maintained so that "hot" topics do not overload specific nodes. |
-| **CAP Theorem Trade-offs** | We must choose between **Consistency** and **Availability**. For a compliance system, we will likely prioritize Availability (always returning a report) and accept Eventual Consistency for the underlying data. |
-| **Replication & Durability** | Explanation data is legally critical. We must implement **Replication** to ensure that no Case File is lost, even if a storage node suffers a catastrophic failure. |
-| **Concurrency** | The system must handle high-throughput read requests during fraud spikes while simultaneously allowing new case files to be written to the database. |
-
-### 3. What are some sample papers that will guide your work?
-Would be finalized after approval.
-
----
-
-## Option 4: Distributed Data Preprocessing Service for Large-Scale ML
-
-### 1. What is the topic area of the project? Why is it important and what specifically will you build or design?
-
-The topic area is **High-Performance Distributed Computing for Machine Learning Pipelines**. In modern deep learning, a significant bottleneck is often "data starvation," where powerful GPUs sit idle waiting for CPUs to preprocess raw data (e.g., resizing images or tokenizing text). This project is important because it decouples data preparation from model training, allowing for significantly higher resource utilization and faster training times.
-
-We will build a **Distributed Producer-Consumer Service**. The system will consist of a Master Scheduler, a fleet of Preprocessing Workers, and a high-throughput Shared Buffer. The Master will assign raw data batches to workers, which will process them in parallel and push the results to the buffer for the training node to consume. We will implement the scheduling logic, the data transfer protocols, and the synchronization mechanisms required to keep the GPU continuously fed.
-
-### 2. What are the main distributed systems challenges you will face?
-
-| Challenge | Description & Implementation Strategy |
-| :--- | :--- |
-| **Throughput** | The system must transfer processed data over the network faster than the GPU consumes it. We must optimize **Network I/O** and serialization protocols to prevent the network from becoming the new bottleneck. |
-| **Load Balancing** | Data processing times can vary significantly. A static assignment strategy is inefficient. We must implement **Dynamic Load Balancing** (e.g., work stealing) to ensure all worker CPUs are fully utilized. |
-| **Fault Tolerance** | If a worker crashes while processing a batch, that data cannot be lost. We must implement a **Retry Mechanism** to detect failures and re-assign the batch to a healthy worker transparently. |
-| **Ordering** | For sequential data (like time-series), the order of batches matters. We must implement **Synchronization** logic to ensure that processed data arrives at the consumer in the correct order, despite parallel execution. |
-
-### 3. What are some sample papers that will guide your work?
-Would be finalized after approval.
+https://arxiv.org/pdf/2411.04468)
