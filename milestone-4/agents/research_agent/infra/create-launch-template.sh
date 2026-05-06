@@ -7,7 +7,7 @@ set -e
 LAUNCH_TEMPLATE_NAME="research-agent-template"
 INSTANCE_TYPE="t3.micro"
 AMI_ID="ami-02b9a589195146a8f"
-SECURITY_GROUP_ID="sg-0801378588349451b"
+SECURITY_GROUP_ID="sg-06b68dd650bc99451"
 INSTANCE_PROFILE="LabInstanceProfile"
 REGION=$(aws configure get region 2>/dev/null || echo "us-east-1")
 
@@ -422,7 +422,7 @@ cat > /tmp/launch-template-data.json << LTEOF
   "NetworkInterfaces": [
     {
       "DeviceIndex": 0,
-      "AssociatePublicIpAddress": true,
+      "AssociatePublicIpAddress": false,
       "Groups": ["${SECURITY_GROUP_ID}"],
       "DeleteOnTermination": true
     }
