@@ -44,6 +44,7 @@ echo "Fetching subnets..."
 SUBNETS=$(aws ec2 describe-subnets \
     --region "$REGION" \
     --filters "Name=vpc-id,Values=${DEBATE_VPC}" \
+              "Name=tag:Name,Values=debate-private-subnet-*" \
     --query "Subnets[*].SubnetId" \
     --output text | tr '\t' ',')
 
