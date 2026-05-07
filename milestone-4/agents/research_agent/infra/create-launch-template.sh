@@ -7,7 +7,7 @@ set -e
 LAUNCH_TEMPLATE_NAME="research-agent-template"
 INSTANCE_TYPE="t3.micro"
 AMI_ID="ami-02b9a589195146a8f"
-SECURITY_GROUP_ID="sg-06b68dd650bc99451"
+SECURITY_GROUP_ID="sg-0ab6d228da7d091db"
 INSTANCE_PROFILE="LabInstanceProfile"
 REGION=$(aws configure get region 2>/dev/null || echo "us-east-1")
 
@@ -225,7 +225,7 @@ def start_heartbeat(receipt: str) -> threading.Event:
 # ─────────────────────────────────────────────────────────────
 SYSTEM_PROMPT = """You are a specialized research agent in a multi-agent debate system.
 Your job is to research a specific angle of a query thoroughly and objectively.
-Respond ONLY with valid JSON — no markdown fences, no extra text.
+Respond ONLY with valid JSON -- no markdown fences, no extra text.
 Schema:
 {
   "summary":     "<3-5 sentence summary of key findings>",
@@ -234,15 +234,42 @@ Schema:
   "confidence":  <float 0.0-1.0>,
   "limitations": "<what this angle misses or cannot address>"
 }
-Be factual, cite real evidence, and be honest about confidence levels."""
+Be factual, cite real evidence, and be honest about confidence levels.
+If previous findings and judge feedback are provided, you MUST improve upon them
+directly addressing every piece of feedback given."""
 
 
-def research(query: str, angle: str) -> dict:
+def research(
+    query: str,
+    angle: str,
+    round_num: int,
+    judge_feedback: str = "",
+    previous_findings: dict = None,
+) -> dict:
+    """
+    Round 1: research from scratch.
+    Round 2+: improve on previous findings based on judge feedback.
+    """
+    if round_num == 1 or not previous_findings:
+        user_content = f"Query: {query}\nAngle to research: {angle}"
+    else:
+        user_content = (
+            f"Query: {query}\n"
+            f"Angle to research: {angle}\n\n"
+            f"=== YOUR PREVIOUS FINDINGS (Round {round_num - 1}) ===\n"
+            f"{json.dumps(previous_findings, indent=2)}\n\n"
+            f"=== JUDGE FEEDBACK YOU MUST ADDRESS ===\n"
+            f"{judge_feedback if judge_feedback else 'No specific feedback -- maintain and improve quality.'}\n\n"
+            f"Now produce improved findings for Round {round_num}. "
+            f"Directly address every piece of feedback above."
+        )
+        log.info(f"Round {round_num} -- including previous findings and judge feedback")
+
     resp = llm.chat.completions.create(
         model="gpt-4o",
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user",   "content": f"Query: {query}\nAngle to research: {angle}"}
+            {"role": "user",   "content": user_content},
         ],
         response_format={"type": "json_object"}
     )
@@ -280,11 +307,13 @@ def loop():
 
             try:
                 # ── Parse task ───────────────────────────────────────
-                body      = json.loads(msg["Body"])
-                query     = body["query"]
-                angle     = body["angle"]
-                debate_id = body["debate_id"]
-                round_num = int(body["round"])
+                body               = json.loads(msg["Body"])
+                query              = body["query"]
+                angle              = body["angle"]
+                debate_id          = body["debate_id"]
+                round_num          = int(body["round"])
+                judge_feedback     = body.get("judge_feedback", "")
+                previous_findings  = body.get("previous_findings", {})
 
                 log.info(f"Task — debate={debate_id} round={round_num} angle={angle!r}")
                 log.info(f"Query: {query[:100]}{'...' if len(query) > 100 else ''}")
@@ -294,7 +323,18 @@ def loop():
 
                 # ── Research ─────────────────────────────────────────
                 log.info("Calling GPT-4o...")
-                findings = research(query, angle)
+                if judge_feedback:
+                    log.info(f"Judge feedback: {judge_feedback[:100]}")
+                if previous_findings:
+                    log.info("Previous findings received -- round improvement mode")
+
+                findings = research(
+                    query=query,
+                    angle=angle,
+                    round_num=round_num,
+                    judge_feedback=judge_feedback,
+                    previous_findings=previous_findings,
+                )
                 log.info(f"Research complete — confidence={findings.get('confidence', 'n/a')}")
 
                 # ── Send result ──────────────────────────────────────
