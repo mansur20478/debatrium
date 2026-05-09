@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Debatrium — Debate</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="dashboard.html">Debatrium</a>
+  <div class="nav-user">
+    <span id="nav-email"></span>
+    <button class="btn btn-outline btn-sm" onclick="auth.signOut().then(()=>location.href='index.html')">Log Out</button>
+  </div>
+</nav>
+
+<div class="page">
+  <a class="back-link" href="dashboard.html">← My Debates</a>
+
+  <!-- ── NEW DEBATE FORM ─────────────────────────────── -->
+  <div id="new-debate-section">
+    <div class="result-card">
+      <div class="result-header">
+        <div>
+          <h2>Start a New Debate</h2>
+          <div style="font-size:.875rem;color:var(--muted);margin-top:2px;">
+            AI agents will research, critique, and judge your question across up to 3 rounds.
+          </div>
+        </div>
+      </div>
+      <div id="form-alert" class="alert"></div>
+      <form onsubmit="handleSubmit(event)">
+        <div class="field">
+          <label>Your Question</label>
+          <textarea id="query-input" placeholder='e.g. "Is AI safe in healthcare?"' required></textarea>
+        </div>
+        <button class="btn btn-primary" type="submit" id="submit-btn">Start Debate</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── DEBATE RESULT / STATUS ─────────────────────── -->
+  <div id="result-section" style="display:none;">
+
+    <div id="running-card" class="result-card" style="display:none;">
+      <div class="result-header">
+        <div class="spinner spinner-dark" style="width:24px;height:24px;flex-shrink:0;"></div>
+        <div>
+          <h2 id="status-title">Debate in progress...</h2>
+          <div id="status-sub" style="font-size:.875rem;color:var(--muted);margin-top:2px;"></div>
+        </div>
+      </div>
+      <div style="margin-bottom:6px;">
+        <div style="display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted);margin-bottom:6px;">
+          <span id="round-label">Round 1 of 3</span>
+          <span id="round-pct">33%</span>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" id="progress-bar" style="width:33%;"></div>
+        </div>
+      </div>
+      <div style="font-size:.8rem;color:var(--muted);margin-top:10px;">
+        Polling every 10 seconds — this page updates automatically.
+      </div>
+    </div>
+
+    <div id="complete-card" class="result-card" style="display:none;">
+      <div class="result-header">
+        <span style="font-size:1.5rem;">✅</span>
+        <div>
+          <h2>Debate Complete</h2>
+          <div id="complete-meta" style="font-size:.875rem;color:var(--muted);margin-top:2px;"></div>
+        </div>
+      </div>
+      <div class="result-body" id="result-body"></div>
+    </div>
+
+    <div id="error-card" class="result-card" style="display:none;">
+      <div class="result-header">
+        <span style="font-size:1.5rem;">❌</span>
+        <div><h2>Something went wrong</h2></div>
+      </div>
+      <div id="error-msg" class="alert alert-error show"></div>
+    </div>
+
+    <div id="query-display" style="margin-top:16px;font-size:.875rem;color:var(--muted);"></div>
+  </div>
+
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+<script>
+  const params   = new URLSearchParams(window.location.search);
+  const debateId = params.get("id");
+  let   pollTimer = null;
+
+  requireAuth().then((user) => {
+    document.getElementById("nav-email").textContent = user.email;
+    if (debateId) {
+      showResultSection(user, debateId);
+    }
+  });
+
+  // ── Submit new debate ───────────────────────────────
+  async function handleSubmit(e) {
+    e.preventDefault();
+    const query = document.getElementById("query-input").value.trim();
+    if (!query) return;
+
+    setFormAlert("", "");
+    setSubmitLoading(true);
+
+    const user = auth.currentUser;
+    try {
+      const resp = await apiPost("/debate", { query });
+      const id   = resp.debate_id;
+
+      await saveDebate(user.uid, id, query);
+      window.location.href = `debate.html?id=${id}`;
+    } catch (err) {
+      setFormAlert(err.message, "error");
+      setSubmitLoading(false);
+    }
+  }
+
+  function setSubmitLoading(on) {
+    const btn = document.getElementById("submit-btn");
+    btn.disabled  = on;
+    btn.innerHTML = on
+      ? '<span class="spinner"></span> Starting debate...'
+      : "Start Debate";
+  }
+
+  function setFormAlert(msg, type) {
+    const el = document.getElementById("form-alert");
+    if (!msg) { el.className = "alert"; return; }
+    el.className  = `alert alert-${type} show`;
+    el.textContent = msg;
+  }
+
+  // ── Show result / poll ──────────────────────────────
+  async function showResultSection(user, id) {
+    document.getElementById("new-debate-section").style.display = "none";
+    document.getElementById("result-section").style.display     = "";
+
+    // Load from Firestore first for instant display
+    const cached = await getDebate(id);
+    if (cached) {
+      document.getElementById("query-display").textContent = `Question: "${cached.query}"`;
+      if (cached.status === "complete" && cached.result) {
+        renderComplete(cached);
+        return;
+      }
+      if (cached.status === "error") {
+        renderError(cached.errorMsg || "An error occurred during the debate.");
+        return;
+      }
+      renderRunning(cached.round || 1, cached.maxRounds || 3);
+    } else {
+      renderRunning(1, 3);
+    }
+
+    // Start polling API Gateway
+    pollNow(user, id);
+    pollTimer = setInterval(() => pollNow(user, id), 10000);
+  }
+
+  async function pollNow(user, id) {
+    try {
+      const resp = await apiGet(`/debate/${id}/result`);
+
+      if (resp.status === "complete") {
+        clearInterval(pollTimer);
+        const result = resp.result || {};
+        await updateDebate(id, {
+          status:      "complete",
+          result:      result,
+          round:       result.rounds_completed || 3,
+          completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        const fresh = await getDebate(id);
+        renderComplete(fresh);
+      } else if (resp.status === "not_found") {
+        clearInterval(pollTimer);
+        renderError("Debate not found. It may have expired.");
+      } else {
+        const round = resp.current_round || 1;
+        const max   = resp.max_rounds   || 3;
+        renderRunning(round, max);
+        await updateDebate(id, { round, maxRounds: max });
+      }
+    } catch (err) {
+      // Don't stop polling on transient errors
+      console.warn("Poll error:", err.message);
+    }
+  }
+
+  // ── Render states ───────────────────────────────────
+  function renderRunning(round, max) {
+    show("running-card"); hide("complete-card"); hide("error-card");
+    const pct = Math.round(round / max * 100);
+    document.getElementById("status-title").textContent  = "Debate in progress...";
+    document.getElementById("status-sub").textContent    = `Agents are researching and debating your question.`;
+    document.getElementById("round-label").textContent   = `Round ${round} of ${max}`;
+    document.getElementById("round-pct").textContent     = pct + "%";
+    document.getElementById("progress-bar").style.width  = pct + "%";
+  }
+
+  function renderComplete(d) {
+    hide("running-card"); show("complete-card"); hide("error-card");
+    const r = d.result || {};
+    document.getElementById("complete-meta").textContent =
+      `Completed in ${r.rounds_completed || "?"} round(s)  ·  ${formatTime(d.completedAt)}`;
+
+    const body = document.getElementById("result-body");
+    body.innerHTML = "";
+
+    const rows = [
+      ["Verdict",  r.verdict       || r.final_verdict  || "—"],
+      ["Score",    r.score         || r.confidence_score || "—"],
+      ["Summary",  r.summary       || r.final_summary   || "—"],
+    ];
+
+    rows.forEach(([label, val]) => {
+      if (!val || val === "—") return;
+      const div = document.createElement("div");
+      div.className = "result-row";
+      if (label === "Summary") {
+        div.innerHTML = `
+          <div class="result-label">${label}</div>
+          <div class="result-value">
+            <div class="result-summary">${escHtml(String(val))}</div>
+          </div>`;
+      } else {
+        div.innerHTML = `
+          <div class="result-label">${label}</div>
+          <div class="result-value">${escHtml(String(val))}</div>`;
+      }
+      body.appendChild(div);
+    });
+
+    // Any extra keys
+    const shown  = new Set(["verdict","final_verdict","score","confidence_score","summary","final_summary","rounds_completed"]);
+    const extras = Object.entries(r).filter(([k]) => !shown.has(k));
+    if (extras.length) {
+      const div = document.createElement("div");
+      div.className = "result-row";
+      div.innerHTML = `
+        <div class="result-label">Details</div>
+        <div class="result-value">
+          <div class="result-summary">${escHtml(JSON.stringify(Object.fromEntries(extras), null, 2))}</div>
+        </div>`;
+      body.appendChild(div);
+    }
+  }
+
+  function renderError(msg) {
+    hide("running-card"); hide("complete-card"); show("error-card");
+    document.getElementById("error-msg").textContent = msg;
+  }
+
+  function show(id) { document.getElementById(id).style.display = ""; }
+  function hide(id) { document.getElementById(id).style.display = "none"; }
+  function escHtml(s) {
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+</script>
+</body>
+</html>

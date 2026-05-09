@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Debatrium — My Debates</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="dashboard.html">Debatrium</a>
+  <div class="nav-user">
+    <span id="nav-email">Loading...</span>
+    <button class="btn btn-outline btn-sm" onclick="handleLogout()">Log Out</button>
+  </div>
+</nav>
+
+<div class="page-wide">
+
+  <div class="section-header">
+    <div class="section-title">My Debates</div>
+    <a class="btn btn-primary btn-sm" href="debate.html">+ New Debate</a>
+  </div>
+
+  <div id="loading" style="text-align:center; padding:60px; color:var(--muted);">
+    <div class="spinner spinner-dark" style="width:28px;height:28px;margin:0 auto 12px;"></div>
+    Loading your debates...
+  </div>
+
+  <div id="debate-list" class="debate-grid" style="display:none;"></div>
+
+  <div id="empty" class="empty-state" style="display:none;">
+    <h2>No debates yet</h2>
+    <p>Start your first debate and see AI agents argue it out.</p>
+    <a class="btn btn-primary btn-sm" href="debate.html">Start a Debate</a>
+  </div>
+
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+<script>
+  let currentUser = null;
+
+  requireAuth().then((user) => {
+    currentUser = user;
+    document.getElementById("nav-email").textContent = user.email;
+    loadDebates(user.uid);
+  });
+
+  function handleLogout() {
+    auth.signOut().then(() => { window.location.href = "index.html"; });
+  }
+
+  function loadDebates(userId) {
+    debatesRef(userId).onSnapshot((snap) => {
+      document.getElementById("loading").style.display = "none";
+
+      if (snap.empty) {
+        document.getElementById("empty").style.display = "";
+        return;
+      }
+
+      document.getElementById("empty").style.display  = "none";
+      document.getElementById("debate-list").style.display = "";
+
+      const list = document.getElementById("debate-list");
+      list.innerHTML = "";
+
+      snap.forEach((doc) => {
+        const d = doc.data();
+        list.appendChild(buildCard(doc.id, d));
+      });
+    }, (err) => {
+      document.getElementById("loading").innerHTML =
+        `<div class="alert alert-error show">Failed to load debates: ${err.message}</div>`;
+    });
+  }
+
+  function buildCard(id, d) {
+    const a = document.createElement("a");
+    a.className  = "debate-card";
+    a.href       = `debate.html?id=${id}`;
+
+    const badgeClass = { running: "badge-running", complete: "badge-complete", error: "badge-error" }[d.status] || "badge-running";
+    const badgeLabel = { running: "⟳ Running", complete: "✓ Complete", error: "✗ Error" }[d.status] || d.status;
+
+    const roundInfo = d.status === "running"
+      ? `<div class="progress-bar-wrap"><div class="progress-bar" style="width:${Math.round((d.round||1) / (d.maxRounds||3) * 100)}%"></div></div>`
+      : "";
+
+    a.innerHTML = `
+      <div class="debate-card-header">
+        <div class="debate-query">${escHtml(d.query)}</div>
+        <span class="badge ${badgeClass}">${badgeLabel}</span>
+      </div>
+      ${roundInfo}
+      <div class="debate-meta" style="margin-top:8px;">
+        ${d.status === "running" ? `Round ${d.round||1} of ${d.maxRounds||3} &nbsp;·&nbsp; ` : ""}
+        Started ${formatTime(d.startedAt)}
+        ${d.completedAt ? ` &nbsp;·&nbsp; Completed ${formatTime(d.completedAt)}` : ""}
+      </div>
+    `;
+    return a;
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+</script>
+</body>
+</html>

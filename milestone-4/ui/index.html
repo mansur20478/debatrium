@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Debatrium — Login</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">Debatrium</div>
+    <div class="auth-tagline">AI-powered multi-agent debate system</div>
+
+    <div class="tabs">
+      <div class="tab active" id="tab-login"    onclick="showTab('login')">Log In</div>
+      <div class="tab"        id="tab-register" onclick="showTab('register')">Register</div>
+    </div>
+
+    <div id="alert" class="alert"></div>
+
+    <!-- Login form -->
+    <form id="login-form" onsubmit="handleLogin(event)">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="you@example.com" required />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="Your password" required />
+      </div>
+      <button class="btn btn-primary" type="submit" id="login-btn">
+        Log In
+      </button>
+      <div class="divider" style="margin-top:16px;">
+        No account? <span class="tab-link" onclick="showTab('register')">Register here</span>
+      </div>
+    </form>
+
+    <!-- Register form -->
+    <form id="register-form" style="display:none;" onsubmit="handleRegister(event)">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="you@example.com" required />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="reg-password" placeholder="Min 8 chars, upper + digit" required />
+      </div>
+      <button class="btn btn-primary" type="submit" id="reg-btn">
+        Create Account
+      </button>
+      <div class="divider" style="margin-top:16px;">
+        Already have an account? <span class="tab-link" onclick="showTab('login')">Log in</span>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+<script>
+  // Redirect if already logged in
+  redirectIfLoggedIn("dashboard.html");
+
+  function showTab(name) {
+    document.getElementById("tab-login").classList.toggle("active", name === "login");
+    document.getElementById("tab-register").classList.toggle("active", name === "register");
+    document.getElementById("login-form").style.display    = name === "login"    ? "" : "none";
+    document.getElementById("register-form").style.display = name === "register" ? "" : "none";
+    clearAlert();
+  }
+
+  function showAlert(msg, type = "error") {
+    const el = document.getElementById("alert");
+    el.className = `alert alert-${type} show`;
+    el.textContent = msg;
+  }
+
+  function clearAlert() {
+    document.getElementById("alert").className = "alert";
+  }
+
+  function setLoading(btnId, loading) {
+    const btn = document.getElementById(btnId);
+    btn.disabled = loading;
+    btn.innerHTML = loading
+      ? '<span class="spinner"></span> Please wait...'
+      : (btnId === "login-btn" ? "Log In" : "Create Account");
+  }
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    clearAlert();
+    const email    = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value;
+    setLoading("login-btn", true);
+    try {
+      await auth.signInWithEmailAndPassword(email, password);
+      window.location.href = "dashboard.html";
+    } catch (err) {
+      setLoading("login-btn", false);
+      const msg = {
+        "auth/user-not-found":     "No account found for this email.",
+        "auth/wrong-password":     "Incorrect password.",
+        "auth/invalid-credential": "Invalid email or password.",
+        "auth/too-many-requests":  "Too many attempts. Try again later.",
+      }[err.code] || err.message;
+      showAlert(msg);
+    }
+  }
+
+  async function handleRegister(e) {
+    e.preventDefault();
+    clearAlert();
+    const email    = document.getElementById("reg-email").value.trim();
+    const password = document.getElementById("reg-password").value;
+    setLoading("reg-btn", true);
+    try {
+      await auth.createUserWithEmailAndPassword(email, password);
+      window.location.href = "dashboard.html";
+    } catch (err) {
+      setLoading("reg-btn", false);
+      const msg = {
+        "auth/email-already-in-use": "An account with this email already exists.",
+        "auth/weak-password":        "Password too weak — min 8 chars with upper and digit.",
+        "auth/invalid-email":        "Invalid email address.",
+      }[err.code] || err.message;
+      showAlert(msg);
+    }
+  }
+</script>
+
+<style>
+  .tab-link { color: var(--primary); cursor: pointer; font-weight: 600; }
+  .tab-link:hover { text-decoration: underline; }
+</style>
+</body>
+</html>
