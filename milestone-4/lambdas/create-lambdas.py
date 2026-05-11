@@ -25,13 +25,13 @@ from botocore.exceptions import ClientError
 # ─────────────────────────────────────────────────────────────
 # LOAD CONFIG
 # ─────────────────────────────────────────────────────────────
-CONFIG_FILE = "../debate_config.json"
+CONFIG_FILE = os.path.join(os.path.dirname(__file__), "..", "debate_config.json")
 
-if not os.path.exists(CONFIG_FILE):
-    print(f"ERROR: {CONFIG_FILE} not found. Run setup.py first.")
+if not os.path.exists(os.path.abspath(CONFIG_FILE)):
+    print(f"ERROR: debate_config.json not found. Run setup.py first.")
     sys.exit(1)
 
-with open(CONFIG_FILE) as f:
+with open(os.path.abspath(CONFIG_FILE)) as f:
     cfg = json.load(f)
 
 REGION             = cfg["region"]
