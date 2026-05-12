@@ -25,13 +25,14 @@ from botocore.exceptions import ClientError
 # ─────────────────────────────────────────────────────────────
 # LOAD CONFIG
 # ─────────────────────────────────────────────────────────────
-CONFIG_FILE = "../debate_config.json"
+SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(SCRIPT_DIR, "..", "debate_config.json")
 
-if not os.path.exists(CONFIG_FILE):
-    print(f"ERROR: {CONFIG_FILE} not found. Run setup.py first.")
+if not os.path.exists(os.path.abspath(CONFIG_FILE)):
+    print(f"ERROR: debate_config.json not found. Run setup.py first.")
     sys.exit(1)
 
-with open(CONFIG_FILE) as f:
+with open(os.path.abspath(CONFIG_FILE)) as f:
     cfg = json.load(f)
 
 REGION             = cfg["region"]
@@ -56,7 +57,7 @@ LAMBDA_DEFINITIONS = {
         "description": "Aggregates research results and dispatches to critics",
         "timeout":     300,
         "memory":      512,
-        "zip_file":    "aggregator_lambda.zip",
+        "zip_file":    os.path.join(SCRIPT_DIR, "aggregator_lambda.zip"),
         "env": {
             "REDIS_HOST":             REDIS_HOST,
             "REDIS_PORT":             REDIS_PORT,
@@ -72,7 +73,7 @@ LAMBDA_DEFINITIONS = {
         "description": "Aggregates critic results and dispatches to judges",
         "timeout":     300,
         "memory":      512,
-        "zip_file":    "critic_aggregator_lambda.zip",
+        "zip_file":    os.path.join(SCRIPT_DIR, "critic_aggregator_lambda.zip"),
         "env": {
             "REDIS_HOST":            REDIS_HOST,
             "REDIS_PORT":            REDIS_PORT,
@@ -87,7 +88,7 @@ LAMBDA_DEFINITIONS = {
         "description": "Aggregates judge verdicts — finalizes or starts next round",
         "timeout":     300,
         "memory":      512,
-        "zip_file":    "judge_aggregator_lambda.zip",
+        "zip_file":    os.path.join(SCRIPT_DIR, "judge_aggregator_lambda.zip"),
         "env": {
             "REDIS_HOST":               REDIS_HOST,
             "REDIS_PORT":               REDIS_PORT,
@@ -105,7 +106,7 @@ LAMBDA_DEFINITIONS = {
         "description": "Debate orchestrator — triggered by API Gateway",
         "timeout":     29,
         "memory":      256,
-        "zip_file":    "orchestrator_lambda.zip",
+        "zip_file":    os.path.join(SCRIPT_DIR, "orchestrator_lambda.zip"),
         "env": {
             "REDIS_HOST":               REDIS_HOST,
             "REDIS_PORT":               REDIS_PORT,

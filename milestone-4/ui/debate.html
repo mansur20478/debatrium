@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Debatrium — Debate</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* ── Result layout ─────────────────────────────── */
+    .verdict-hero {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-bottom: 16px;
+    }
+    .verdict-question {
+      font-size: .85rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-style: italic;
+    }
+    .verdict-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      margin-bottom: 16px;
+      line-height: 1.3;
+    }
+    .verdict-meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .verdict-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border-radius: 99px;
+      font-size: .8rem;
+      font-weight: 700;
+    }
+    .pill-neutral  { background: #EFF6FF; color: #1D4ED8; }
+    .pill-positive { background: #D1FAE5; color: #065F46; }
+    .pill-negative { background: #FEE2E2; color: #991B1B; }
+    .pill-score    { background: #F3F4F6; color: #374151; }
+    .pill-rounds   { background: #F3F4F6; color: #374151; }
+
+    .score-row {
+      margin-bottom: 20px;
+    }
+    .score-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: .8rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .score-value { font-weight: 700; color: var(--text); }
+
+    .verdict-summary {
+      font-size: .95rem;
+      line-height: 1.7;
+      color: var(--text);
+      margin-bottom: 20px;
+    }
+    .key-points { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .key-points li {
+      display: flex;
+      gap: 10px;
+      font-size: .9rem;
+      line-height: 1.5;
+    }
+    .key-points li::before {
+      content: "→";
+      color: var(--primary);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* ── Toggle panel ──────────────────────────────── */
+    .toggle-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 16px;
+      font-size: .875rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background .15s, color .15s;
+    }
+    .toggle-btn:hover { background: var(--bg); color: var(--text); }
+    .toggle-arrow { transition: transform .2s; display: inline-block; }
+    .toggle-arrow.open { transform: rotate(90deg); }
+
+    .details-panel {
+      display: none;
+      margin-top: 16px;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .details-panel.open { display: flex; }
+
+    /* ── Judge cards ───────────────────────────────── */
+    .judge-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .judge-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .judge-name {
+      font-size: .75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .judge-score-big {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 6px;
+    }
+    .judge-summary {
+      font-size: .8rem;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+
+    /* ── Angle accordion ───────────────────────────── */
+    .angle-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .angle-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: .9rem;
+    }
+    .angle-header:hover { background: #E5E7EB; }
+    .angle-body {
+      display: none;
+      padding: 0 16px 16px;
+      border-top: 1px solid var(--border);
+    }
+    .angle-body.open { display: block; }
+    .angle-summary {
+      font-size: .875rem;
+      line-height: 1.6;
+      margin: 12px 0;
+    }
+    .evidence-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .evidence-item {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: .8rem;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+
+    /* ── Consensus box ─────────────────────────────── */
+    .consensus-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .consensus-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 12px;
+    }
+    @media (max-width: 500px) { .consensus-cols { grid-template-columns: 1fr; } }
+    .consensus-col-title {
+      font-size: .75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: 8px;
+    }
+    .agree-title  { color: var(--green); }
+    .disagree-title { color: var(--red); }
+    .consensus-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+    .consensus-list li { font-size: .82rem; line-height: 1.5; color: var(--muted); padding-left: 12px; position: relative; }
+    .consensus-list li::before { content: "•"; position: absolute; left: 0; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="dashboard.html">Debatrium</a>
+  <div class="nav-user">
+    <span id="nav-email"></span>
+    <button class="btn btn-outline btn-sm" onclick="auth.signOut().then(()=>location.href='index.html')">Log Out</button>
+  </div>
+</nav>
+
+<div class="page">
+  <a class="back-link" href="dashboard.html">← My Debates</a>
+
+  <!-- ── NEW DEBATE FORM ─────────────────────────── -->
+  <div id="new-debate-section">
+    <div class="result-card">
+      <div class="result-header">
+        <div>
+          <h2>Start a New Debate</h2>
+          <div style="font-size:.875rem;color:var(--muted);margin-top:2px;">
+            AI agents will research, critique, and judge your question across up to 3 rounds.
+          </div>
+        </div>
+      </div>
+      <div id="form-alert" class="alert"></div>
+      <form onsubmit="handleSubmit(event)">
+        <div class="field">
+          <label>Your Question</label>
+          <textarea id="query-input" placeholder='e.g. "Is AI safe in healthcare?"' required></textarea>
+        </div>
+        <button class="btn btn-primary" type="submit" id="submit-btn">Start Debate</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── RESULT SECTION ─────────────────────────── -->
+  <div id="result-section" style="display:none;">
+
+    <!-- Running state -->
+    <div id="running-card" class="result-card" style="display:none;">
+      <div class="result-header" style="justify-content:space-between;align-items:flex-start;">
+        <div style="display:flex;gap:12px;align-items:center;">
+          <div class="spinner spinner-dark" style="width:24px;height:24px;flex-shrink:0;"></div>
+          <div>
+            <h2 id="status-title">Debate in progress...</h2>
+            <div id="status-sub" style="font-size:.875rem;color:var(--muted);margin-top:2px;"></div>
+          </div>
+        </div>
+        <button class="btn btn-outline btn-sm" id="cancel-btn" onclick="handleCancel()" style="flex-shrink:0;">
+          Cancel & Delete
+        </button>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted);margin-bottom:6px;">
+          <span id="round-label">Round 1 of 3</span>
+          <span id="round-pct">33%</span>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" id="progress-bar" style="width:33%;"></div>
+        </div>
+      </div>
+      <div style="font-size:.8rem;color:var(--muted);margin-top:10px;">
+        Polling every 10 seconds — this page updates automatically.
+      </div>
+      <div id="stuck-warning" class="alert alert-error" style="display:none;margin-top:12px;">
+        This debate has been running for over <span id="stuck-mins">15</span> minutes and may be stuck. You can safely cancel and delete it.
+      </div>
+    </div>
+
+    <!-- Complete state -->
+    <div id="complete-card" style="display:none;">
+
+      <!-- Hero: verdict + summary -->
+      <div class="verdict-hero">
+        <div class="verdict-question" id="verdict-question"></div>
+        <div class="verdict-title" id="verdict-title"></div>
+
+        <div class="verdict-meta-row" id="verdict-meta"></div>
+
+        <div class="score-row">
+          <div class="score-label-row">
+            <span>Overall confidence</span>
+            <span class="score-value" id="score-pct"></span>
+          </div>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar" id="result-progress" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div class="verdict-summary" id="verdict-summary"></div>
+
+        <ul class="key-points" id="key-points"></ul>
+      </div>
+
+      <!-- Toggle: full analysis -->
+      <button class="toggle-btn" onclick="toggleDetails()" id="toggle-btn">
+        <span class="toggle-arrow" id="toggle-arrow">▶</span>
+        See full analysis
+      </button>
+
+      <div class="details-panel" id="details-panel">
+
+        <!-- Judge scores -->
+        <div>
+          <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px;">Judge Scores</div>
+          <div class="judge-grid" id="judge-grid"></div>
+        </div>
+
+        <!-- Points of agreement/disagreement -->
+        <div class="consensus-box" id="consensus-box"></div>
+
+        <!-- Per-angle research -->
+        <div>
+          <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px;">Research by Angle</div>
+          <div id="angle-accordions" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Error state -->
+    <div id="error-card" class="result-card" style="display:none;">
+      <div class="result-header">
+        <span style="font-size:1.5rem;">❌</span>
+        <div><h2>Something went wrong</h2></div>
+      </div>
+      <div id="error-msg" class="alert alert-error show"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+<script>
+  const params   = new URLSearchParams(window.location.search);
+  const debateId = params.get("id");
+  let   pollTimer = null;
+  let   stuckTimer = null;
+  const STUCK_THRESHOLD_MIN = 15;
+
+  requireAuth().then((user) => {
+    document.getElementById("nav-email").textContent = user.email;
+    if (debateId) showResultSection(user, debateId);
+  });
+
+  // Stop polling when user navigates away
+  window.addEventListener("beforeunload", () => {
+    if (pollTimer)  clearInterval(pollTimer);
+    if (stuckTimer) clearInterval(stuckTimer);
+  });
+
+  async function handleCancel() {
+    if (!confirm("Cancel and delete this debate? This cannot be undone.")) return;
+    const btn = document.getElementById("cancel-btn");
+    btn.disabled = true;
+    btn.textContent = "Deleting...";
+    if (pollTimer)  clearInterval(pollTimer);
+    if (stuckTimer) clearInterval(stuckTimer);
+    try {
+      await deleteDebate(debateId);
+      window.location.href = "dashboard.html";
+    } catch (err) {
+      alert("Failed to delete: " + err.message);
+      btn.disabled = false;
+      btn.textContent = "Cancel & Delete";
+    }
+  }
+
+  function checkStuck(startedAt) {
+    if (!startedAt) return;
+    const startMs    = startedAt.toDate ? startedAt.toDate().getTime() : new Date(startedAt).getTime();
+    const elapsedMin = (Date.now() - startMs) / 60000;
+    if (elapsedMin > STUCK_THRESHOLD_MIN) {
+      document.getElementById("stuck-mins").textContent = STUCK_THRESHOLD_MIN;
+      document.getElementById("stuck-warning").style.display = "";
+    }
+  }
+
+  // ── New debate form ─────────────────────────────────────────
+  async function handleSubmit(e) {
+    e.preventDefault();
+    const query = document.getElementById("query-input").value.trim();
+    if (!query) return;
+    setFormAlert("", "");
+    setSubmitLoading(true);
+    try {
+      const resp = await apiPost("/debate", { query });
+      await saveDebate(auth.currentUser.uid, resp.debate_id, query);
+      window.location.href = `debate.html?id=${resp.debate_id}`;
+    } catch (err) {
+      setFormAlert(err.message, "error");
+      setSubmitLoading(false);
+    }
+  }
+  function setSubmitLoading(on) {
+    const btn = document.getElementById("submit-btn");
+    btn.disabled  = on;
+    btn.innerHTML = on ? '<span class="spinner"></span> Starting debate...' : "Start Debate";
+  }
+  function setFormAlert(msg, type) {
+    const el = document.getElementById("form-alert");
+    if (!msg) { el.className = "alert"; return; }
+    el.className = `alert alert-${type} show`;
+    el.textContent = msg;
+  }
+
+  // ── Polling ─────────────────────────────────────────────────
+  async function showResultSection(user, id) {
+    document.getElementById("new-debate-section").style.display = "none";
+    document.getElementById("result-section").style.display     = "";
+
+    const cached = await getDebate(id);
+    if (cached) {
+      if (cached.status === "complete" && cached.result) { renderComplete(cached); return; }
+      if (cached.status === "error")                     { renderError(cached.errorMsg || "Debate failed."); return; }
+      renderRunning(cached.round || 1, cached.maxRounds || 3);
+      checkStuck(cached.startedAt);
+      stuckTimer = setInterval(async () => {
+        const fresh = await getDebate(id);
+        if (fresh) checkStuck(fresh.startedAt);
+      }, 30000);
+    } else {
+      renderRunning(1, 3);
+    }
+    pollNow(user, id);
+    pollTimer = setInterval(() => pollNow(user, id), 10000);
+  }
+
+  async function pollNow(user, id) {
+    try {
+      const resp = await apiGet(`/debate/${id}/result`);
+      if (resp.status === "complete") {
+        clearInterval(pollTimer);
+        const result = resp.result || {};
+        await updateDebate(id, {
+          status: "complete", result,
+          round:  result.total_rounds || result.rounds_completed || 3,
+          completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        renderComplete({ result, query: (await getDebate(id))?.query });
+      } else if (resp.status === "not_found") {
+        clearInterval(pollTimer);
+        renderError("Debate not found or expired.");
+      } else {
+        const round = resp.current_round || 1, max = resp.max_rounds || 3;
+        renderRunning(round, max);
+        await updateDebate(id, { round, maxRounds: max });
+      }
+    } catch (err) { console.warn("Poll error:", err.message); }
+  }
+
+  // ── Render: running ─────────────────────────────────────────
+  function renderRunning(round, max) {
+    show("running-card"); hide("complete-card"); hide("error-card");
+    const pct = Math.round(round / max * 100);
+    document.getElementById("round-label").textContent  = `Round ${round} of ${max}`;
+    document.getElementById("round-pct").textContent    = pct + "%";
+    document.getElementById("progress-bar").style.width = pct + "%";
+  }
+
+  // ── Render: complete ────────────────────────────────────────
+  function renderComplete(d) {
+    hide("running-card"); show("complete-card"); hide("error-card");
+    const r = d.result || {};
+
+    // ── HERO ────────────────────────────────────────────────
+    const query       = r.query       || d.query || "";
+    const winner      = (r.winning_angle || "neutral").toUpperCase();
+    const avgScore    = r.avg_score   || 0;
+    const totalRounds = r.total_rounds || 3;
+
+    document.getElementById("verdict-question").textContent = `"${query}"`;
+    document.getElementById("verdict-title").textContent    = verdictHeadline(winner, avgScore);
+
+    // Meta pills
+    const winnerClass = { NEUTRAL: "pill-neutral", POSITIVE: "pill-positive", NEGATIVE: "pill-negative" }[winner] || "pill-neutral";
+    document.getElementById("verdict-meta").innerHTML = `
+      <span class="verdict-pill ${winnerClass}">Strongest angle: ${winner}</span>
+      <span class="verdict-pill pill-score">Score: ${pct(avgScore)}</span>
+      <span class="verdict-pill pill-rounds">${totalRounds} round${totalRounds !== 1 ? "s" : ""}</span>
+    `;
+
+    // Score bar
+    document.getElementById("score-pct").textContent        = pct(avgScore);
+    document.getElementById("result-progress").style.width  = (avgScore * 100) + "%";
+
+    // Summary: use consensus judge summary as the top-level answer
+    const consensus    = (r.verdicts || {}).consensus || {};
+    const winningAngle = (r.final_research || {})[r.winning_angle || "neutral"] || {};
+    const summaryText  = consensus.summary || winningAngle.summary || "";
+    document.getElementById("verdict-summary").textContent = summaryText;
+
+    // Key points from winning angle
+    const kpEl = document.getElementById("key-points");
+    kpEl.innerHTML = "";
+    (winningAngle.key_points || []).forEach((pt) => {
+      const li = document.createElement("li");
+      li.textContent = pt;
+      kpEl.appendChild(li);
+    });
+
+    // ── DETAILS ─────────────────────────────────────────────
+    buildJudgeGrid(r.verdicts || {});
+    buildConsensus(consensus);
+    buildAngleAccordions(r.final_research || {}, r.angle_scores || {});
+  }
+
+  function verdictHeadline(winner, score) {
+    if (score >= 0.8) return `Strong ${winner} perspective prevailed`;
+    if (score >= 0.65) return `${winner} perspective was most compelling`;
+    return `Contested debate — ${winner} perspective led`;
+  }
+
+  function pct(v) { return Math.round((v || 0) * 100) + "%"; }
+
+  // ── Judge grid ──────────────────────────────────────────────
+  function buildJudgeGrid(verdicts) {
+    const grid = document.getElementById("judge-grid");
+    grid.innerHTML = "";
+    ["accuracy", "fairness", "consensus"].forEach((lens) => {
+      const v = verdicts[lens] || {};
+      const card = document.createElement("div");
+      card.className = "judge-card";
+      card.innerHTML = `
+        <div class="judge-name">${lens}</div>
+        <div class="judge-score-big">${pct(v.overall_score)}</div>
+        <div class="progress-bar-wrap" style="margin-bottom:10px;">
+          <div class="progress-bar" style="width:${(v.overall_score||0)*100}%"></div>
+        </div>
+        <div class="judge-summary">${escHtml(v.summary || "")}</div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  // ── Consensus box ───────────────────────────────────────────
+  function buildConsensus(consensus) {
+    const box = document.getElementById("consensus-box");
+    const agree    = (consensus.points_of_agreement    || []);
+    const disagree = (consensus.points_of_disagreement || []);
+    box.innerHTML = `
+      <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);">Where agents agreed vs. disagreed</div>
+      <div class="consensus-cols">
+        <div>
+          <div class="consensus-col-title agree-title">✓ Agreement</div>
+          <ul class="consensus-list">${agree.map(p => `<li>${escHtml(p)}</li>`).join("") || "<li>—</li>"}</ul>
+        </div>
+        <div>
+          <div class="consensus-col-title disagree-title">✗ Disagreement</div>
+          <ul class="consensus-list">${disagree.map(p => `<li>${escHtml(p)}</li>`).join("") || "<li>—</li>"}</ul>
+        </div>
+      </div>
+    `;
+  }
+
+  // ── Per-angle accordion ─────────────────────────────────────
+  function buildAngleAccordions(research, angleScores) {
+    const container = document.getElementById("angle-accordions");
+    container.innerHTML = "";
+    const labels = { positive: "Positive", neutral: "Neutral", negative: "Negative" };
+    const colors  = { positive: "#065F46", neutral: "#1D4ED8", negative: "#991B1B" };
+
+    Object.entries(research).forEach(([angle, data]) => {
+      const score = angleScores[angle] || 0;
+      const card  = document.createElement("div");
+      card.className = "angle-card";
+
+      const bodyId = `angle-body-${angle}`;
+      card.innerHTML = `
+        <div class="angle-header" onclick="toggleAngle('${bodyId}', this)">
+          <span style="color:${colors[angle]||'#374151'};font-weight:700;">
+            ${labels[angle] || angle} angle
+          </span>
+          <span style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:.8rem;color:var(--muted);">${pct(score)}</span>
+            <span style="font-size:.8rem;color:var(--muted);">▶</span>
+          </span>
+        </div>
+        <div class="angle-body" id="${bodyId}">
+          <p class="angle-summary">${escHtml(data.summary || "")}</p>
+          ${(data.key_points||[]).length ? `
+            <ul class="key-points" style="margin-bottom:12px;">
+              ${(data.key_points||[]).map(p=>`<li>${escHtml(p)}</li>`).join("")}
+            </ul>` : ""}
+          ${(data.evidence||[]).length ? `
+            <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px;">Evidence</div>
+            <div class="evidence-list">
+              ${(data.evidence||[]).map(e=>`<div class="evidence-item">${escHtml(e)}</div>`).join("")}
+            </div>` : ""}
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function toggleAngle(bodyId, header) {
+    const body  = document.getElementById(bodyId);
+    const arrow = header.querySelector("span:last-child span:last-child");
+    const open  = body.classList.toggle("open");
+    if (arrow) arrow.textContent = open ? "▼" : "▶";
+  }
+
+  function toggleDetails() {
+    const panel = document.getElementById("details-panel");
+    const arrow = document.getElementById("toggle-arrow");
+    const open  = panel.classList.toggle("open");
+    arrow.classList.toggle("open", open);
+    document.getElementById("toggle-btn").innerHTML =
+      `<span class="toggle-arrow ${open ? 'open' : ''}" id="toggle-arrow">${open ? "▼" : "▶"}</span>
+       ${open ? "Hide" : "See"} full analysis`;
+  }
+
+  // ── Render: error ───────────────────────────────────────────
+  function renderError(msg) {
+    hide("running-card"); hide("complete-card"); show("error-card");
+    document.getElementById("error-msg").textContent = msg;
+  }
+
+  function show(id) { document.getElementById(id).style.display = ""; }
+  function hide(id) { document.getElementById(id).style.display = "none"; }
+  function escHtml(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+</script>
+</body>
+</html>

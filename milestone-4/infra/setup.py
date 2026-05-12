@@ -2,6 +2,7 @@
 
 import boto3
 import json
+import os
 import time
 import sys
 from typing import Dict, Optional
@@ -903,9 +904,15 @@ def save_local_config(queue_urls: Dict, redis_info: Dict, vpc_info: Dict, sg_inf
             "port": int(redis_info["port"]),
         },
     }
-    with open("debate_config.json", "w") as f:
-        json.dump(config, f, indent=2)
-    ok("Saved debate_config.json")
+    # Write to infra/ (next to this script) AND milestone-4/ (project root)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    for dest in [
+        os.path.join(script_dir, "debate_config.json"),
+        os.path.join(script_dir, "..", "debate_config.json"),
+    ]:
+        with open(dest, "w") as f:
+            json.dump(config, f, indent=2)
+        ok(f"Saved {os.path.normpath(dest)}")
 
 
 
