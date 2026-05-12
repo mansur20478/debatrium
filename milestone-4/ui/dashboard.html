@@ -82,31 +82,87 @@
     });
   }
 
+  // Debates running longer than this are considered stuck
+  const STUCK_THRESHOLD_MIN = 15;
+
+  function isStuck(d) {
+    if (d.status !== "running") return false;
+    if (!d.startedAt) return false;
+    const startMs    = d.startedAt.toDate ? d.startedAt.toDate().getTime() : 0;
+    const elapsedMin = (Date.now() - startMs) / 60000;
+    return elapsedMin > STUCK_THRESHOLD_MIN;
+  }
+
+  function relativeTime(ts) {
+    if (!ts) return "just now";
+    const d    = ts.toDate ? ts.toDate() : new Date(ts);
+    const diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60)    return "just now";
+    if (diff < 3600)  return Math.floor(diff/60)   + " min ago";
+    if (diff < 86400) return Math.floor(diff/3600) + " hr ago";
+    return Math.floor(diff/86400) + " day(s) ago";
+  }
+
   function buildCard(id, d) {
-    const a = document.createElement("a");
-    a.className  = "debate-card";
-    a.href       = `debate.html?id=${id}`;
+    const card  = document.createElement("div");
+    const stuck = isStuck(d);
 
-    const badgeClass = { running: "badge-running", complete: "badge-complete", error: "badge-error" }[d.status] || "badge-running";
-    const badgeLabel = { running: "⟳ Running", complete: "✓ Complete", error: "✗ Error" }[d.status] || d.status;
+    card.className = "debate-card" + (stuck ? " debate-card-stuck" : "");
 
-    const roundInfo = d.status === "running"
+    let badgeClass, badgeLabel;
+    if (stuck) {
+      badgeClass = "badge-error";
+      badgeLabel = "⚠ Stuck";
+    } else {
+      badgeClass = { running: "badge-running", complete: "badge-complete", error: "badge-error" }[d.status] || "badge-running";
+      badgeLabel = { running: "⟳ Running",    complete: "✓ Complete",    error: "✗ Error"   }[d.status] || d.status;
+    }
+
+    const showProgress = d.status === "running" && !stuck;
+    const progressInfo = showProgress
       ? `<div class="progress-bar-wrap"><div class="progress-bar" style="width:${Math.round((d.round||1) / (d.maxRounds||3) * 100)}%"></div></div>`
       : "";
 
-    a.innerHTML = `
-      <div class="debate-card-header">
-        <div class="debate-query">${escHtml(d.query)}</div>
-        <span class="badge ${badgeClass}">${badgeLabel}</span>
+    const stuckHint = stuck
+      ? `<div class="stuck-hint">This debate has been running for over ${STUCK_THRESHOLD_MIN} minutes and may be stuck. You can safely delete it.</div>`
+      : "";
+
+    card.innerHTML = `
+      <div class="debate-card-clickable">
+        <div class="debate-card-header">
+          <div class="debate-query">${escHtml(d.query)}</div>
+          <span class="badge ${badgeClass}">${badgeLabel}</span>
+        </div>
+        ${progressInfo}
+        <div class="debate-meta" style="margin-top:8px;">
+          ${showProgress ? `Round ${d.round||1} of ${d.maxRounds||3} &nbsp;·&nbsp; ` : ""}
+          Started ${relativeTime(d.startedAt)}
+          ${d.completedAt ? ` &nbsp;·&nbsp; Completed ${relativeTime(d.completedAt)}` : ""}
+        </div>
+        ${stuckHint}
       </div>
-      ${roundInfo}
-      <div class="debate-meta" style="margin-top:8px;">
-        ${d.status === "running" ? `Round ${d.round||1} of ${d.maxRounds||3} &nbsp;·&nbsp; ` : ""}
-        Started ${formatTime(d.startedAt)}
-        ${d.completedAt ? ` &nbsp;·&nbsp; Completed ${formatTime(d.completedAt)}` : ""}
-      </div>
+      <button class="debate-card-delete" title="Delete debate">×</button>
     `;
-    return a;
+
+    card.querySelector(".debate-card-clickable").addEventListener("click", () => {
+      window.location.href = `debate.html?id=${id}`;
+    });
+
+    card.querySelector(".debate-card-delete").addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const msg = stuck
+        ? "Delete this stuck debate? This cannot be undone."
+        : "Delete this debate? This cannot be undone.";
+      if (!confirm(msg)) return;
+      try {
+        await deleteDebate(id);
+        // Card will disappear automatically via onSnapshot
+      } catch (err) {
+        alert("Failed to delete: " + err.message);
+      }
+    });
+
+    return card;
   }
 
   function escHtml(s) {

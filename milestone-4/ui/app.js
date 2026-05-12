@@ -87,6 +87,10 @@ async function updateDebate(debateId, fields) {
   await db.collection("debates").doc(debateId).update(fields);
 }
 
+async function deleteDebate(debateId) {
+  await db.collection("debates").doc(debateId).delete();
+}
+
 async function getDebate(debateId) {
   const doc = await db.collection("debates").doc(debateId).get();
   return doc.exists ? { id: doc.id, ...doc.data() } : null;

@@ -250,12 +250,17 @@
 
     <!-- Running state -->
     <div id="running-card" class="result-card" style="display:none;">
-      <div class="result-header">
-        <div class="spinner spinner-dark" style="width:24px;height:24px;flex-shrink:0;"></div>
-        <div>
-          <h2 id="status-title">Debate in progress...</h2>
-          <div id="status-sub" style="font-size:.875rem;color:var(--muted);margin-top:2px;"></div>
+      <div class="result-header" style="justify-content:space-between;align-items:flex-start;">
+        <div style="display:flex;gap:12px;align-items:center;">
+          <div class="spinner spinner-dark" style="width:24px;height:24px;flex-shrink:0;"></div>
+          <div>
+            <h2 id="status-title">Debate in progress...</h2>
+            <div id="status-sub" style="font-size:.875rem;color:var(--muted);margin-top:2px;"></div>
+          </div>
         </div>
+        <button class="btn btn-outline btn-sm" id="cancel-btn" onclick="handleCancel()" style="flex-shrink:0;">
+          Cancel & Delete
+        </button>
       </div>
       <div>
         <div style="display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted);margin-bottom:6px;">
@@ -268,6 +273,9 @@
       </div>
       <div style="font-size:.8rem;color:var(--muted);margin-top:10px;">
         Polling every 10 seconds — this page updates automatically.
+      </div>
+      <div id="stuck-warning" class="alert alert-error" style="display:none;margin-top:12px;">
+        This debate has been running for over <span id="stuck-mins">15</span> minutes and may be stuck. You can safely cancel and delete it.
       </div>
     </div>
 
@@ -344,11 +352,46 @@
   const params   = new URLSearchParams(window.location.search);
   const debateId = params.get("id");
   let   pollTimer = null;
+  let   stuckTimer = null;
+  const STUCK_THRESHOLD_MIN = 15;
 
   requireAuth().then((user) => {
     document.getElementById("nav-email").textContent = user.email;
     if (debateId) showResultSection(user, debateId);
   });
+
+  // Stop polling when user navigates away
+  window.addEventListener("beforeunload", () => {
+    if (pollTimer)  clearInterval(pollTimer);
+    if (stuckTimer) clearInterval(stuckTimer);
+  });
+
+  async function handleCancel() {
+    if (!confirm("Cancel and delete this debate? This cannot be undone.")) return;
+    const btn = document.getElementById("cancel-btn");
+    btn.disabled = true;
+    btn.textContent = "Deleting...";
+    if (pollTimer)  clearInterval(pollTimer);
+    if (stuckTimer) clearInterval(stuckTimer);
+    try {
+      await deleteDebate(debateId);
+      window.location.href = "dashboard.html";
+    } catch (err) {
+      alert("Failed to delete: " + err.message);
+      btn.disabled = false;
+      btn.textContent = "Cancel & Delete";
+    }
+  }
+
+  function checkStuck(startedAt) {
+    if (!startedAt) return;
+    const startMs    = startedAt.toDate ? startedAt.toDate().getTime() : new Date(startedAt).getTime();
+    const elapsedMin = (Date.now() - startMs) / 60000;
+    if (elapsedMin > STUCK_THRESHOLD_MIN) {
+      document.getElementById("stuck-mins").textContent = STUCK_THRESHOLD_MIN;
+      document.getElementById("stuck-warning").style.display = "";
+    }
+  }
 
   // ── New debate form ─────────────────────────────────────────
   async function handleSubmit(e) {
@@ -388,6 +431,11 @@
       if (cached.status === "complete" && cached.result) { renderComplete(cached); return; }
       if (cached.status === "error")                     { renderError(cached.errorMsg || "Debate failed."); return; }
       renderRunning(cached.round || 1, cached.maxRounds || 3);
+      checkStuck(cached.startedAt);
+      stuckTimer = setInterval(async () => {
+        const fresh = await getDebate(id);
+        if (fresh) checkStuck(fresh.startedAt);
+      }, 30000);
     } else {
       renderRunning(1, 3);
     }
