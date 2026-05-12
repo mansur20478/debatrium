@@ -81,12 +81,11 @@ Built for CSCI 6421 — Distributed Systems.
 
 ```
 final-project-albert-einstein/
-├── README.md                              <- you are here
+├── milestone-4/README.md                              <- you are here
 ├── milestone-1/                           <- early design & docs
 ├── milestone-2/                           <- second milestone
 ├── milestone-3/                           <- third milestone
 └── milestone-4/                           <- final implementation
-    ├── HOW_TO_RUN.md                      <- detailed setup guide (phases 1-7)
     ├── debate_config.json                 <- generated; holds all AWS resource IDs
     ├── requirements.txt                   <- Python deps for local CLI + tests
     │
