@@ -4,6 +4,8 @@ A fault-tolerant distributed system that answers user questions by orchestrating
 
 Built for CSCI 6421 — Distributed Systems.
 
+Demo video: https://youtu.be/ES2NaRC2RTI.
+
 ## Team
 
 | Name |
